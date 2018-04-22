@@ -1,11 +1,16 @@
 import { Component, OnInit, HostListener, NgZone } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import {Web3Service} from './util/web3.service';
+import {Observable} from 'rxjs/Rx';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+
 const grubscan_artifacts = require('../../build/contracts/Grubscan.json');
 const contract = require('truffle-contract');
 declare var window: any;
 const Web3 = require('web3');
-
+const ipfsAPI = require('ipfs-api');
+const Buffer = require('buffer/').Buffer;
 
 @Component({
   selector: 'app-root',
@@ -13,7 +18,7 @@ const Web3 = require('web3');
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'app';
+  title = 'grubscan';
   Grubscan = contract(grubscan_artifacts);
   grubscanInstance: any;
 
@@ -21,12 +26,31 @@ export class AppComponent {
   accounts: any;
   web3: any;
 
-  constructor(private _ngZone: NgZone) {}
+  private play = {
+    qrCode: 'Hello',
+  };
+
+  private qrCode: any;
+
+
+  constructor(private _ngZone: NgZone, private http: HttpClient) {}
 
   @HostListener('window:load')
   windowLoaded() {
     this.checkAndInstantiateWeb3();
     this.onReady();
+    const ipfs = ipfsAPI('localhost', '5001', {protocol: 'http'});
+    console.log(ipfs);
+    const files = [
+      {
+        path: '/home/dope_vector/util.txt',
+        content: Buffer.from('This is good')
+      }
+    ];
+
+    ipfs.files.add(files, function (err, filer) {
+        console.log(JSON.stringify(filer));
+    });
   }
 
   checkAndInstantiateWeb3 = () => {
@@ -49,32 +73,50 @@ export class AppComponent {
     }
   }
 
-  getHistory = () => {
-    let grubscanInstance;
-    this.Grubscan.deployed().then(function(instance) {
+  public getHistory = () => {
+    let grubscanInstance, counter;
+    this.Grubscan.deployed().then(function (instance) {
       grubscanInstance = instance;
       return grubscanInstance.historyCount();
     }).then(function(historyCount) {
+      counter = 0;
       for (let i = 1; i <= historyCount; i++) {
-        grubscanInstance.historyLogs(i).then(function(candidate) {
-          const id = candidate[0];
-          const company = candidate[1];
-          const date = candidate[2];
+        grubscanInstance.historyLogs(i).then(function(history) {
+          counter++;
+          const id = history[0];
+          const company = history[1];
+          const date = history[2];
+          const process = history[3];
+          const chemical = history[4];
 
-          console.log(id + ' ' + company + ' ' + date);
+          const jsondata = 'id:' + id + ', company: ' + company + ', date: ' + date + ',process : ' + process + ',chemical: ' + chemical;
+          localStorage.setItem(counter, jsondata);
+          // console.log(JSON.parse(JSON.stringify(localStorage.getItem(counter))));
+          localStorage.setItem('finalCount', counter);
         });
       }
-      // return grubscanInstance.voters(App.account);
-    // }).then(function(hasVoted) {
-    //   // Do not allow a user to vote
-    //   if(hasVoted) {
-    //     $('form').hide();
-    //   }
-    //   loader.hide();
-    //   content.show();
+      counter = localStorage.getItem('finalCount');
+      console.log(counter);
+      const dataArray = new Array();
+      for (let i = 0; i < counter; i++) {
+        dataArray.push(localStorage.getItem(i.toString()));
+      }
+      console.log(JSON.stringify(dataArray));
+
+      return JSON.stringify(dataArray);
+    }).then((peace) => {
+      this.play.qrCode = peace;
     }).catch(function(error) {
       console.warn(error);
     });
+  }
+
+  getCookie = (data) => {
+    return localStorage.getItem(data);
+  }
+
+  setCookie = (data, value) => {
+      return localStorage.setItem(data, value);
   }
 
   addHistory = (form: NgForm) => {
@@ -91,6 +133,35 @@ export class AppComponent {
     const process1 = form.value.process1;
     const process2 = form.value.process2;
     const process3 = form.value.process3;
+
+    const post = [
+      {
+        id: 'x',
+        field: '1',
+        company : company,
+        date : date1,
+        process : process1,
+        chemical : chem1
+      },
+      {
+        id: 'x',
+        field: '2',
+        company : company,
+        date : date2,
+        process : process2,
+        chemical : chem2
+      },
+      {
+        id: 'x',
+        field: '2',
+        company : company,
+        date : date3,
+        process : process3,
+        chemical : chem3
+      }
+    ];
+    console.log(post);
+    this.sendPosts(post);
 
     acc1 = this.accounts[0];
     acc2 = this.accounts[1];
@@ -109,10 +180,38 @@ export class AppComponent {
     });
   }
 
+  getPosts = (postId) => {
+    this.http.get('http://localhost:9000/v1/posts/' + postId).subscribe(res => {
+        const jsonResults = JSON.parse(JSON.stringify(res));
+        const id = jsonResults._id;
+        const postObject = jsonResults.post;
+        console.log(id);
+        console.log(postObject);
+    });
+  }
+
+  sendPosts = (posts) => {
+    console.log("Log entry post " + posts);
+    const req = this.http.post('http://localhost:9000/v1/posts/', {post : JSON.stringify(posts)} )
+      .subscribe(
+        res => {
+          const jsonResults = JSON.parse(JSON.stringify(res));
+          const id = jsonResults._id;
+          const postObject = jsonResults.post;
+          console.log(id);
+          console.log(postObject);
+          console.log(JSON.parse(JSON.stringify(res)));
+          this.qrCode = 'http://localhost:9000/v1/posts/' + id;
+        },
+        err => {
+          console.log(err);
+        }
+      );
+  }
+
   onReady = () => {
     // Bootstrap the Grubscan abstraction for Use.
     this.Grubscan.setProvider(this.web3.currentProvider);
-    console.log(grubscan_artifacts);
     // Get the initial account balance so it can be displayed.
     this.web3.eth.getAccounts((err, accs) => {
       if (err != null) {
@@ -134,8 +233,6 @@ export class AppComponent {
       this._ngZone.run(() => {
         // Initial loading of UI
         // Load balances or whatever
-        console.log(this.accounts);
-        this.getHistory();
       });
 
     });

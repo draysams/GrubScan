@@ -15,7 +15,8 @@
     </mat-toolbar-row>
   </mat-toolbar>
   
-  <form #signupForm="ngForm" (ngSubmit)="addHistory(signupForm)">
+  <form #signupForm="ngForm" (ngSubmit)="addHistory(signupForm)"> 
+    <!-- addHistory(signupForm) -->
 
       <div class="container" fxLayout="row" fxLayout.xs="column" fxLayoutWrap fxLayoutGap="5%" fxLayoutAlign="center">
         <div fxFlex="50%">
@@ -86,9 +87,12 @@
           </mat-form-field>
         </div>
       </div>
-        <div class="center_buton">
+        <div class="center_button">
           <button type="submit" mat-raised-button color="primary">Submit</button>
         </div>
       </form>
+      <div class="center_button">
+        <ngx-qrcode qrc-element-type="url" [qrc-value]="qrCode"></ngx-qrcode>
+      </div>
       
   </div>

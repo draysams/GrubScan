@@ -12,6 +12,8 @@ import {MatDatepickerModule} from '@angular/material/datepicker';
 import {MatNativeDateModule} from '@angular/material';
 import {MatButtonModule} from '@angular/material/button';
 import {UtilModule} from './util/util.module';
+import { NgxQRCodeModule} from 'ngx-qrcode2';
+import { HttpClientModule } from '@angular/common/http';
 
 import { AppComponent } from './app.component';
 import { FormsModule } from '@angular/forms';
@@ -36,6 +38,8 @@ import { FormsModule } from '@angular/forms';
     MatButtonModule,
     FormsModule,
     UtilModule,
+    NgxQRCodeModule,
+    HttpClientModule,
   ],
   providers: [],
   bootstrap: [AppComponent]
